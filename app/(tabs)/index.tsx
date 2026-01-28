@@ -1,9 +1,19 @@
-import { View, Text } from "react-native";
+import { View } from "react-native";
+import HabitItem from "../../components/HabitItem";
+import { useHabits } from "../../hooks/useHabits";
 
 export default function HomeScreen() {
+  const { habits, toggleHabit } = useHabits();
+
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text style={{ fontSize: 24 }}>Habit Tracker 🪴</Text>
+    <View style={{ flex: 1, padding: 20 , backgroundColor: '#fff' }}>
+      {habits.map(habit => (
+        <HabitItem
+          key={habit.id}
+          habit={habit}
+          onToggle={() => toggleHabit(habit.id)}
+        />
+      ))}
     </View>
   );
 }
