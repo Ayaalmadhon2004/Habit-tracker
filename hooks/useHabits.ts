@@ -8,6 +8,7 @@ export function useHabits() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [isLoading,setIsLoading]=useState<boolean>(true);
   const isInitialMount=useRef(true);
+
   useEffect(()=>{
     const loadHabits=async()=>{
       try{
@@ -42,7 +43,6 @@ export function useHabits() {
     }
   },[habits,isLoading]);
 
-
   const toggleHabit = useCallback((id: string) => {
     setHabits(habits =>
       habits.map(h =>
@@ -55,7 +55,7 @@ export function useHabits() {
 
   const addHabit=useCallback((title:string)=>{
     const newHabits:Habit={
-      id: crypto.randomUUID?.() || Date.now().toString(),
+      id:Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
       title,
       completedToday:false
     }
@@ -71,5 +71,13 @@ export function useHabits() {
       }
   },[]);
 
-  return { habits, toggleHabit, addHabit ,isLoading, clearHabits};
+  const deleteHabit=useCallback((id:string)=>{
+    setHabits(prev=>prev.filter(habit=>habit.id!==id));
+  },[])
+
+  const updateHabit=useCallback((id:string,newTitle:string)=>{
+    setHabits(prev=>prev.map(h=>h.id===id ? {...h,title:newTitle} : h));
+  },[])
+
+  return { habits, toggleHabit, addHabit ,isLoading, clearHabits, deleteHabit , updateHabit};
 }
