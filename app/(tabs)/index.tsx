@@ -1,22 +1,57 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, TextInput, Pressable, FlatList, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; // استيراد الـ Hook
 import { useHabits } from "../../hooks/useHabits";
 import { HabitItem } from "../../components/HabitItem";
 
 export default function HomeScreen() {
-  const insets = useSafeAreaInsets(); // الحصول على المساحات (top, bottom, left, right)
+  const insets = useSafeAreaInsets(); 
   const { habits, toggleHabit, addHabit, deleteHabit, updateHabit } = useHabits();
   const [newHabit, setNewHabit] = useState('');
 
+  const stats=useMemo(()=>{
+    const total = habits.length;
+    const completed=habits.filter(h=>h.completedToday).length;
+
+    const percentage=total>0 ? (completed/total)*100 : 0;
+
+    return {total , completed, percentage: Math.round(percentage)};
+  },[habits]);
+
+  const handleAddHabit = () => {
+  if (newHabit.trim()) {
+    addHabit(newHabit.trim()); 
+    setNewHabit(''); 
+  };}
+
   return (
-    // نستخدم View عادي ونعطيه padding علوي ديناميكي
     <View style={[styles.mainWrapper, { paddingTop: insets.top }]}>
       <View style={styles.container}>
-        
-        <View style={styles.headerContainer}>
-          <Text style={styles.title}>My Habits</Text>
-          <Text style={styles.subtitle}>Stay sharp, stay consistent</Text>
+
+        <View style={{ marginBottom: 30 }}>
+            <View style={styles.headerContainer}>
+              <Text style={styles.title}>Track your Habits</Text>
+              <Text style={styles.subtitle}>Stay sharp, stay consistent</Text>
+            </View>
+
+            <View style={{ 
+              height: 12, 
+              backgroundColor: '#E2E8F0', 
+              borderRadius: 6, 
+              overflow: 'hidden' 
+              }}>
+            <View style={{ 
+                height: '100%', 
+                backgroundColor: '#3182CE', 
+                width: `${stats.percentage}%`, 
+                borderRadius: 6 
+                }} />
+            </View>       
+        </View>
+
+        <View style={{ marginBottom: 20 }}>
+          <Text style={{ fontWeight: 'bold', color: '#4A5568' }}>Daily Goal</Text>
+          <Text style={{ fontWeight: 'bold', color: '#3182CE' }}>{stats.percentage}%</Text>
         </View>
 
         <View style={styles.inputBox}>
@@ -25,6 +60,8 @@ export default function HomeScreen() {
             value={newHabit}
             onChangeText={setNewHabit}
             placeholder="New habit..."
+            onSubmitEditing={handleAddHabit} 
+            returnKeyType="done"
           />
           <Pressable style={styles.addBtn} onPress={() => {
             if(newHabit.trim()) { addHabit(newHabit); setNewHabit(''); }
