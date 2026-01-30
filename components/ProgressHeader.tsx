@@ -16,7 +16,7 @@ export const ProgressHeader = ({
   completed,
   animatedStyle,
 }: ProgressHeaderProps) => {
-  const percentage = calculateProgress(total, completed);
+  const percentage = calculateProgress(total, completed) || 0;
 
   return (
     <View style={styles.container}>
@@ -26,7 +26,6 @@ export const ProgressHeader = ({
           <Text style={styles.subtitle}>Stay sharp, stay consistent</Text>
         </View>
         <View style={styles.badge}>
-          {/* الآن percentage معرفة ولن تعطي خطأ */}
           <Text style={styles.badgeText}>{percentage}%</Text>
         </View>
       </View>
@@ -34,7 +33,7 @@ export const ProgressHeader = ({
         <Animated.View 
            style={[
              styles.fill, 
-             { backgroundColor: COLORS.primary }, // تأكد من إضافة لون للخلفية هنا ليظهر الأنييميشن
+             { backgroundColor: COLORS.primary }, 
              animatedStyle
            ]} 
         />

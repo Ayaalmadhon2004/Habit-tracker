@@ -57,8 +57,11 @@ export default function HomeScreen() {
       style={[styles.mainWrapper, { paddingTop: insets.top }]}
     >
       <View style={styles.container}>
-        <ProgressHeader percentage={stats.percentage} animatedStyle={animatedStyle} />
-
+      <ProgressHeader 
+        total={habits.length} 
+        completed={habits.filter(h => h.completedToday).length} // تأكد من اسم الخاصية هنا
+        animatedStyle={animatedStyle}
+      />
         <View style={styles.inputBox}>
           <TextInput
             style={styles.input}
