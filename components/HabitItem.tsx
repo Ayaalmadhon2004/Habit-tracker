@@ -4,24 +4,30 @@ import { Habit } from '../types/habit';
 
 interface HabitItemProps {
   habit: Habit;
-  onToggle: () => void;
-  onDelete: () => void;
-  onUpdate: (newTitle: string) => void;
+  onToggle: (id: string) => void; 
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, newTitle: string) => void;
 }
 
-const HabitItemComponent = ({ habit, onToggle, onDelete, onUpdate }: HabitItemProps) => {
+export const HabitItemComponent = ({ habit, onToggle, onDelete, onUpdate }: HabitItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempTitle, setTempTitle] = useState(habit.title);
 
   const handleUpdate = () => {
-    onUpdate(tempTitle);
+    onUpdate(habit.id, tempTitle);
     setIsEditing(false);
   };
 
   return (
     <View style={styles.containerRow}>
-      <Pressable onPress={onToggle} style={styles.checkArea}>
-        <Text style={styles.iconText}>{habit.completedToday ? "✅" : "⭕"}</Text>
+      <Pressable 
+        testID="habit-item-touchable"
+        onPress={() => onToggle(habit.id)} // هذا هو التعديل المطلوب!
+        style={styles.checkArea}
+      >
+        <Text style={styles.iconText}>
+          {habit.completedToday ? "✅" : "⭕"}
+        </Text>
       </Pressable>
 
       <View style={{ flex: 1 }}>
