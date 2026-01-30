@@ -15,7 +15,6 @@ export default function HomeScreen() {
   const { habits, toggleHabit, addHabit, deleteHabit, updateHabit } = useHabits();
   const [newHabit, setNewHabit] = useState('');
 
-  // إحصائيات دقيقة
   const stats = useMemo(() => {
     const total = habits.length;
     const completed = habits.filter(h => h.completedToday).length;
@@ -48,7 +47,7 @@ export default function HomeScreen() {
 
   const EmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>No habits yet. Add one to get started! 🚀</Text>
+      <Text style={styles.emptyText}>No habits yet. Add one to get started! </Text>
     </View>
   );
 
