@@ -49,6 +49,17 @@ export function useHabits() {
     }));
   };
 
+  useEffect(() => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  setHabits(prevHabits => prevHabits.map(habit => {
+    if (habit.completedToday && !habit.completedDates.includes(today)) {
+      return { ...habit, completedToday: false };
+    }
+    return habit;
+  }));
+  }, []); 
+
   const addHabit = useCallback((title: string) => {
     const newHabit: Habit = {
       id: Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
