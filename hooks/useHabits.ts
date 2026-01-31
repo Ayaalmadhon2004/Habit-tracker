@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Habit } from "../types/habit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { updateStreak } from "@/utils/habitUtils";
 
 const HABITS_STORAGE_KEY="@habits";
 
@@ -44,13 +45,25 @@ export function useHabits() {
   },[habits,isLoading]);
 
   const toggleHabit = useCallback((id: string) => {
-    setHabits(habits =>
-      habits.map(h =>
-        h.id === id
-          ? { ...h, completedToday: !h.completedToday }
-          : h
-      )
-    );
+    setHabits(prevHabits=>prevHabits.map(habit=>{
+      if(habit.id===id){
+        const isCompleting=!habit.completedToday;
+        let newStreak=habit.streak;
+        let newLastCompleted=habit.lastCompleted;
+
+        if(isCompleting){
+          newStreak=updateStreak(habit.streak,habit.lastCompleted);
+          newLastCompleted=new Date().toISOString();
+        }
+        return{
+          ...habit,
+          completedToday:isCompleting,
+          streak:newStreak,
+          lastCompleted:newLastCompleted
+        };
+      }
+      return habit;
+    }))
   },[]);
 
   const addHabit=useCallback((title:string)=>{

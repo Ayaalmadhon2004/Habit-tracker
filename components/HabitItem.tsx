@@ -47,10 +47,15 @@ export const HabitItemComponent = ({ habit, onToggle, onDelete, onUpdate }: Habi
           </Pressable>
         )}
       </View>
-
+        {(habit.streak || 0) > 0 && (
+          <Text style={styles.streakText}>
+            🔥 {habit.streak} يوم تتابع
+          </Text>
+        )}
       <Pressable onPress={onDelete} style={styles.deleteButton}>
         <Text style={{ fontSize: 18 }}>🗑️</Text>
       </Pressable>
+
     </View>
   );
 };
@@ -74,5 +79,11 @@ const styles = StyleSheet.create({
   completedText: { textDecorationLine: 'line-through', color: '#A0AEC0' },
   editInput: { fontSize: 16, color: '#2D3748', borderBottomWidth: 1, borderColor: '#007bff' },
   deleteButton: { padding: 8, marginLeft: 10 },
-  iconText: { fontSize: 20 }
+  iconText: { fontSize: 20 },
+  streakText: {
+    fontSize: 12,
+    color: '#FF8C00', // لون برتقالي يشبه النار
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
 });
