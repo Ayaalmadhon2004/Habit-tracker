@@ -4,4 +4,5 @@ export interface Habit{
     completedToday:boolean;
     streak?:number;
     lastCompleted?:string;
+    completedDates: string[];
 }

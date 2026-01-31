@@ -1,96 +1,78 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Habit } from "../types/habit";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { updateStreak } from "@/utils/habitUtils";
-
-const HABITS_STORAGE_KEY="@habits";
+import { storage } from "@/utils/storage"; 
 
 export function useHabits() {
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [isLoading,setIsLoading]=useState<boolean>(true);
-  const isInitialMount=useRef(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const isInitialMount = useRef(true);
 
-  useEffect(()=>{
-    const loadHabits=async()=>{
-      try{
-        const stored=await AsyncStorage.getItem(HABITS_STORAGE_KEY);
-        if(stored){
-          setHabits(JSON.parse(stored));
-        }
-      }catch(e){
-        console.error("Failed to load habits",e);
-      }
-      finally{
-        setIsLoading(false);
-      }
-    }
-    loadHabits();
-  },[]);
+  useEffect(() => {
+    storage.load().then(data => {
+      setHabits(data);
+      setIsLoading(false);
+    });
+  }, []);
 
-  useEffect(()=>{
-    if(isInitialMount.current){
-      isInitialMount.current=false;
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
       return;
     }
-    const saveHabits=async()=>{
-      try{
-        await AsyncStorage.setItem(HABITS_STORAGE_KEY,JSON.stringify(habits));
-      } catch(e){
-        console.error("Failed to save habits",e);
-      }   
-    };
-    if(!isLoading){
-      saveHabits();
+    if (!isLoading) {
+      storage.save(habits);
     }
-  },[habits,isLoading]);
+  }, [habits, isLoading]);
 
-  const toggleHabit = useCallback((id: string) => {
-    setHabits(prevHabits=>prevHabits.map(habit=>{
-      if(habit.id===id){
-        const isCompleting=!habit.completedToday;
-        let newStreak=habit.streak;
-        let newLastCompleted=habit.lastCompleted;
+  const toggleHabit = (id: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    setHabits(prevHabits => prevHabits.map(habit => {
+      if (habit.id === id) {
+        const isCompleting = !habit.completedToday;
+        let streak = habit.streak || 0;
+        let completedDates = habit.completedDates || [];
 
-        if(isCompleting){
-          newStreak=updateStreak(habit.streak,habit.lastCompleted);
-          newLastCompleted=new Date().toISOString();
+        if (isCompleting) {
+          const lastDate = completedDates[completedDates.length - 1];
+          streak = updateStreak(streak, lastDate);
+          if (!completedDates.includes(today)) {
+            completedDates = [...completedDates, today];
+          }
+        } else {
+          completedDates = completedDates.filter(date => date !== today);
         }
-        return{
-          ...habit,
-          completedToday:isCompleting,
-          streak:newStreak,
-          lastCompleted:newLastCompleted
-        };
+
+        return { ...habit, completedToday: isCompleting, streak, completedDates };
       }
       return habit;
-    }))
-  },[]);
+    }));
+  };
 
-  const addHabit=useCallback((title:string)=>{
-    const newHabits:Habit={
-      id:Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
+  const addHabit = useCallback((title: string) => {
+    const newHabit: Habit = {
+      id: Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
       title,
-      completedToday:false
-    }
-    setHabits(prev=>[...prev,newHabits]);
-  },[]);
+      completedToday: false,
+      streak: 0,          
+      completedDates: [] 
+    };
+    setHabits(prev => [...prev, newHabit]);
+  }, []);
 
-  const clearHabits=useCallback(async()=>{
-      try{
-        await AsyncStorage.removeItem(HABITS_STORAGE_KEY);
-        setHabits([]);
-      }catch(e){
-        console.error("Failed to clear Habit",e);
-      }
-  },[]);
+  const clearAll = useCallback(async () => {
+    await storage.clear();
+    setHabits([]);
+  }, []);
 
-  const deleteHabit=useCallback((id:string)=>{
-    setHabits(prev=>prev.filter(habit=>habit.id!==id));
-  },[])
+    const deleteHabit = useCallback((id: string) => {
+    setHabits(prev => prev.filter(habit => habit.id !== id));
+  }, []);
 
-  const updateHabit=useCallback((id:string,newTitle:string)=>{
-    setHabits(prev=>prev.map(h=>h.id===id ? {...h,title:newTitle} : h));
-  },[])
+  const updateHabit = useCallback((id: string, newTitle: string) => {
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, title: newTitle } : h));
+  }, []);
 
-  return { habits, toggleHabit, addHabit ,isLoading, clearHabits, deleteHabit , updateHabit};
+
+  return { habits, toggleHabit, addHabit, isLoading, clearHabits: clearAll, deleteHabit, updateHabit };
 }
