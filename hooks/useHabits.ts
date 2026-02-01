@@ -27,24 +27,40 @@ export function useHabits() {
 
   const toggleHabit = (id: string) => {
     const today = new Date().toISOString().split('T')[0];
+
     setHabits(prevHabits => prevHabits.map(habit => {
       if (habit.id === id) {
         const isCompleting = !habit.completedToday;
-        let streak = habit.streak || 0;
-        let completedDates = habit.completedDates || [];
+        const isCurrentlyCompleted=habit.completedToday;
+        const alreadyDoneToday=habit.completedDates?.includes(today);
 
-        if (isCompleting) {
-          const lastDate = completedDates[completedDates.length - 1];
-          streak = updateStreak(streak, lastDate);
-          if (!completedDates.includes(today)) {
-            completedDates = [...completedDates, today];
+        let newStreak=habit.streak || 0;
+        let newCompletedDates=habit.completedDates||[];
+
+        if(!isCurrentlyCompleted){
+          if(!alreadyDoneToday){
+            const lastDate=newCompletedDates.length>0
+            ?newCompletedDates[newCompletedDates.length-1]
+            :undefined;
+
+            newStreak=updateStreak(newStreak,lastDate);
+            newCompletedDates=[...newCompletedDates,today];
           }
-        } else {
-          completedDates = completedDates.filter(date => date !== today);
+        }
+        else{
+            if(alreadyDoneToday){
+              newStreak=Math.max(0,newStreak-1);
+              newCompletedDates=newCompletedDates.filter(date=>date!==today);
+            }
         }
 
-        return { ...habit, completedToday: isCompleting, streak, completedDates };
-      }
+        return {
+        ...habit,
+        completedToday: !isCurrentlyCompleted,
+        streak: newStreak,
+        completedDates: newCompletedDates,
+      };
+    }
       return habit;
     }));
   };
@@ -58,7 +74,7 @@ export function useHabits() {
     }
     return habit;
   }));
-  }, []); 
+  }, [isLoading]); 
 
   const addHabit = useCallback((title: string) => {
     const newHabit: Habit = {
