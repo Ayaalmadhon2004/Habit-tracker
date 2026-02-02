@@ -1,4 +1,3 @@
-// src/components/ProgressHeader.tsx
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
@@ -7,16 +6,16 @@ import { calculateProgress } from '../utils/habitUtils';
 
 interface ProgressHeaderProps {
   total: number;      
-  completed: number; 
+  completedCount: number; 
   animatedStyle: any;
 }
 
 export const ProgressHeader = ({
   total,
-  completed,
+  completedCount,
   animatedStyle,
 }: ProgressHeaderProps) => {
-  const percentage = calculateProgress(total, completed) || 0;
+  const percentage = calculateProgress(total, completedCount) || 0;
 
   return (
     <View style={styles.container}>
