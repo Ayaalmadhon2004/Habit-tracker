@@ -14,13 +14,25 @@ export function useHabits() {
 
   useEffect(() => {
     const init = async () => {
-      const [h, c] = await Promise.all([storage.loadHabits(), storage.loadCategories()]);
-      if (h.length > 0) setHabits(h);
-      if (c.length > 0) setCategories(prev => [...prev, ...c]);
+      const [storedHabits, storedCats] = await Promise.all([
+        storage.loadHabits(), 
+        storage.loadCategories()
+      ]);
+      
+      if (storedHabits.length > 0) setHabits(storedHabits);
+      
+      if (storedCats.length > 0) {
+        setCategories(prev => {
+          const combined = [...prev, ...storedCats];
+          return combined.filter((item, index, self) =>
+            index === self.findIndex((t) => t.id === item.id)
+          );
+        });
+      }
       setIsLoading(false);
     };
     init();
-  }, []);
+  }, []); 
 
   useEffect(() => {
     if (!isLoading && !isInitialMount.current) {
@@ -30,11 +42,17 @@ export function useHabits() {
     isInitialMount.current = false;
   }, [habits, categories, isLoading]);
 
+  const deleteCategory = useCallback((id: string) => {
+    if (id === 'all') return;
+    setCategories(prev => prev.filter(c => c.id !== id));
+    setHabits(prev => prev.map(h => h.categoryId === id ? { ...h, categoryId: 'all' } : h));
+  }, []);
+
   const addHabit = useCallback((title: string, categoryId: string) => {
     const newHabit: Habit = {
       id: Date.now().toString(),
       title,
-      categoryId,
+      categoryId: categoryId || 'all',
       completedToday: false,
       streak: 0,
       completedDates: []
@@ -71,8 +89,8 @@ export function useHabits() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
 
-  return { habits, categories, isLoading, addHabit, toggleHabit, addCategory, 
-           deleteHabit: (id: string) => setHabits(p => p.filter(h => h.id !== id)),
-           updateHabit: (id: string, t: string) => setHabits(p => p.map(h => h.id === id ? {...h, title: t} : h))
+  return { habits, categories, isLoading, addHabit, toggleHabit, addCategory, deleteCategory,
+      deleteHabit: (id: string) => setHabits(p => p.filter(h => h.id !== id)),
+      updateHabit: (id: string, t: string) => setHabits(p => p.map(h => h.id === id ? {...h, title: t} : h))
   };
 }
