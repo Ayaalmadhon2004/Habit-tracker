@@ -1,83 +1,123 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Habit } from "../types/habit";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const HABITS_STORAGE_KEY="@habits";
+import { updateStreak } from "@/utils/habitUtils";
+import { storage } from "@/utils/storage";
 
 export function useHabits() {
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [isLoading,setIsLoading]=useState<boolean>(true);
-  const isInitialMount=useRef(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const isInitialMount = useRef(true);
 
-  useEffect(()=>{
-    const loadHabits=async()=>{
-      try{
-        const stored=await AsyncStorage.getItem(HABITS_STORAGE_KEY);
-        if(stored){
-          setHabits(JSON.parse(stored));
-        }
-      }catch(e){
-        console.error("Failed to load habits",e);
+  useEffect(() => {
+    storage.load().then((data) => {
+      if (data && Array.isArray(data)) {
+        const migratedData = data.map((habit: any) => ({
+          ...habit,
+          streak: habit.streak ?? 0,
+          completedDates: habit.completedDates ?? [],
+          completedToday: habit.completedToday ?? false,
+        }));
+        setHabits(migratedData);
       }
-      finally{
-        setIsLoading(false);
-      }
-    }
-    loadHabits();
-  },[]);
+      setIsLoading(false);
+    });
+  }, []);
 
-  useEffect(()=>{
-    if(isInitialMount.current){
-      isInitialMount.current=false;
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
       return;
     }
-    const saveHabits=async()=>{
-      try{
-        await AsyncStorage.setItem(HABITS_STORAGE_KEY,JSON.stringify(habits));
-      } catch(e){
-        console.error("Failed to save habits",e);
-      }   
-    };
-    if(!isLoading){
-      saveHabits();
+    if (!isLoading) {
+      storage.save(habits);
     }
-  },[habits,isLoading]);
+  }, [habits, isLoading]);
 
-  const toggleHabit = useCallback((id: string) => {
-    setHabits(habits =>
-      habits.map(h =>
-        h.id === id
-          ? { ...h, completedToday: !h.completedToday }
-          : h
-      )
-    );
-  },[]);
-
-  const addHabit=useCallback((title:string)=>{
-    const newHabits:Habit={
-      id:Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
-      title,
-      completedToday:false
-    }
-    setHabits(prev=>[...prev,newHabits]);
-  },[]);
-
-  const clearHabits=useCallback(async()=>{
-      try{
-        await AsyncStorage.removeItem(HABITS_STORAGE_KEY);
-        setHabits([]);
-      }catch(e){
-        console.error("Failed to clear Habit",e);
+  useEffect(() => {
+    if (isLoading) return;
+    
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    setHabits(prevHabits => prevHabits.map(habit => {
+      const isActuallyDoneToday = habit.completedDates?.includes(today);
+      if (habit.completedToday !== isActuallyDoneToday) {
+        return { ...habit, completedToday: isActuallyDoneToday };
       }
-  },[]);
+      return habit;
+    }));
+  }, [isLoading]);
 
-  const deleteHabit=useCallback((id:string)=>{
-    setHabits(prev=>prev.filter(habit=>habit.id!==id));
-  },[])
+  const toggleHabit = (id: string) => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-  const updateHabit=useCallback((id:string,newTitle:string)=>{
-    setHabits(prev=>prev.map(h=>h.id===id ? {...h,title:newTitle} : h));
-  },[])
+    setHabits(prevHabits => prevHabits.map(habit => {
+      if (habit.id === id) {
+        const isCurrentlyCompleted = habit.completedToday;
+        const alreadyDoneToday = habit.completedDates?.includes(today);
 
-  return { habits, toggleHabit, addHabit ,isLoading, clearHabits, deleteHabit , updateHabit};
+        let newStreak = habit.streak || 0;
+        let newCompletedDates = [...(habit.completedDates || [])];
+
+        if (!isCurrentlyCompleted) {
+          if (!alreadyDoneToday) {
+            const lastDate = newCompletedDates.length > 0
+              ? newCompletedDates[newCompletedDates.length - 1]
+              : undefined;
+
+            newStreak = updateStreak(newStreak, lastDate);
+            newCompletedDates.push(today);
+          }
+        } else {
+          if (alreadyDoneToday) {
+            newStreak = Math.max(0, newStreak - 1);
+            newCompletedDates = newCompletedDates.filter(date => date !== today);
+          }
+        }
+
+        return {
+          ...habit,
+          completedToday: !isCurrentlyCompleted,
+          streak: newStreak,
+          completedDates: newCompletedDates,
+        };
+      }
+      return habit;
+    }));
+  };
+
+  const addHabit = useCallback((title: string) => {
+    const newHabit: Habit = {
+      id: Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
+      title,
+      completedToday: false,
+      streak: 0,
+      completedDates: []
+    };
+    setHabits(prev => [...prev, newHabit]);
+  }, []);
+
+  const deleteHabit = useCallback((id: string) => {
+    setHabits(prev => prev.filter(habit => habit.id !== id));
+  }, []);
+
+  const updateHabit = useCallback((id: string, newTitle: string) => {
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, title: newTitle } : h));
+  }, []);
+
+  const clearAll = useCallback(async () => {
+    await storage.clear();
+    setHabits([]);
+  }, []);
+
+  return { 
+    habits, 
+    toggleHabit, 
+    addHabit, 
+    isLoading, 
+    clearHabits: clearAll, 
+    deleteHabit, 
+    updateHabit 
+  };
 }
