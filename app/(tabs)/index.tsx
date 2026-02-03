@@ -1,9 +1,5 @@
-import { View, Text } from "react-native";
+import HomeScreen from '../../screens/HomeScreen';
 
-export default function HomeScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text style={{ fontSize: 24 }}>Habit Tracker 🪴</Text>
-    </View>
-  );
+export default function Index() {
+  return <HomeScreen />;
 }
