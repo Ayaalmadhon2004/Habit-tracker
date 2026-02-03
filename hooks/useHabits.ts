@@ -1,58 +1,96 @@
-import { useCallback, useEffect, useState, useRef } from "react";
-import { Category, Habit } from "../types/habit";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Habit } from "../types/habit";
 import { updateStreak } from "@/utils/habitUtils";
-import { storage } from "@/utils/storage"; 
-import * as Haptics from 'expo-haptics';
+import { storage } from "@/utils/storage";
 
 export function useHabits() {
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [categories, setCategories] = useState<Category[]>([
-    { id: 'all', name: 'All', color: '#007AFF' },
-  ]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const isInitialMount = useRef(true);
 
   useEffect(() => {
-    const init = async () => {
-      const [storedHabits, storedCats] = await Promise.all([
-        storage.loadHabits(), 
-        storage.loadCategories()
-      ]);
-      
-      if (storedHabits.length > 0) setHabits(storedHabits);
-      
-      if (storedCats.length > 0) {
-        setCategories(prev => {
-          const combined = [...prev, ...storedCats];
-          return combined.filter((item, index, self) =>
-            index === self.findIndex((t) => t.id === item.id)
-          );
-        });
+    storage.load().then((data) => {
+      if (data && Array.isArray(data)) {
+        const migratedData = data.map((habit: any) => ({
+          ...habit,
+          streak: habit.streak ?? 0,
+          completedDates: habit.completedDates ?? [],
+          completedToday: habit.completedToday ?? false,
+        }));
+        setHabits(migratedData);
       }
       setIsLoading(false);
-    };
-    init();
-  }, []); 
-
-  useEffect(() => {
-    if (!isLoading && !isInitialMount.current) {
-      storage.saveHabits(habits);
-      storage.saveCategories(categories);
-    }
-    isInitialMount.current = false;
-  }, [habits, categories, isLoading]);
-
-  const deleteCategory = useCallback((id: string) => {
-    if (id === 'all') return;
-    setCategories(prev => prev.filter(c => c.id !== id));
-    setHabits(prev => prev.map(h => h.categoryId === id ? { ...h, categoryId: 'all' } : h));
+    });
   }, []);
 
-  const addHabit = useCallback((title: string, categoryId: string) => {
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (!isLoading) {
+      storage.save(habits);
+    }
+  }, [habits, isLoading]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    setHabits(prevHabits => prevHabits.map(habit => {
+      const isActuallyDoneToday = habit.completedDates?.includes(today);
+      if (habit.completedToday !== isActuallyDoneToday) {
+        return { ...habit, completedToday: isActuallyDoneToday };
+      }
+      return habit;
+    }));
+  }, [isLoading]);
+
+  const toggleHabit = (id: string) => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    setHabits(prevHabits => prevHabits.map(habit => {
+      if (habit.id === id) {
+        const isCurrentlyCompleted = habit.completedToday;
+        const alreadyDoneToday = habit.completedDates?.includes(today);
+
+        let newStreak = habit.streak || 0;
+        let newCompletedDates = [...(habit.completedDates || [])];
+
+        if (!isCurrentlyCompleted) {
+          if (!alreadyDoneToday) {
+            const lastDate = newCompletedDates.length > 0
+              ? newCompletedDates[newCompletedDates.length - 1]
+              : undefined;
+
+            newStreak = updateStreak(newStreak, lastDate);
+            newCompletedDates.push(today);
+          }
+        } else {
+          if (alreadyDoneToday) {
+            newStreak = Math.max(0, newStreak - 1);
+            newCompletedDates = newCompletedDates.filter(date => date !== today);
+          }
+        }
+
+        return {
+          ...habit,
+          completedToday: !isCurrentlyCompleted,
+          streak: newStreak,
+          completedDates: newCompletedDates,
+        };
+      }
+      return habit;
+    }));
+  };
+
+  const addHabit = useCallback((title: string) => {
     const newHabit: Habit = {
-      id: Date.now().toString(),
+      id: Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
       title,
-      categoryId: categoryId || 'all',
       completedToday: false,
       streak: 0,
       completedDates: []
@@ -60,37 +98,26 @@ export function useHabits() {
     setHabits(prev => [...prev, newHabit]);
   }, []);
 
-  const toggleHabit = useCallback((id: string) => {
-    setHabits(prev => prev.map(h => {
-      if (h.id !== id) return h;
-      const today = new Date().toISOString().split('T')[0];
-      const isCurrentlyCompleted = h.completedToday;
-      const alreadyDone = h.completedDates?.includes(today);
-      let newStreak = h.streak || 0;
-      let newDates = h.completedDates || [];
-
-      if (!isCurrentlyCompleted) {
-        if (!alreadyDone) {
-          newStreak = updateStreak(newStreak, newDates[newDates.length - 1]);
-          newDates = [...newDates, today];
-        }
-      } else {
-        if (alreadyDone) {
-          newStreak = Math.max(0, newStreak - 1);
-          newDates = newDates.filter(d => d !== today);
-        }
-      }
-      return { ...h, completedToday: !isCurrentlyCompleted, streak: newStreak, completedDates: newDates };
-    }));
+  const deleteHabit = useCallback((id: string) => {
+    setHabits(prev => prev.filter(habit => habit.id !== id));
   }, []);
 
-  const addCategory = useCallback((newCat: Category) => {
-    setCategories(prev => [...prev, newCat]);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const updateHabit = useCallback((id: string, newTitle: string) => {
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, title: newTitle } : h));
   }, []);
 
-  return { habits, categories, isLoading, addHabit, toggleHabit, addCategory, deleteCategory,
-      deleteHabit: (id: string) => setHabits(p => p.filter(h => h.id !== id)),
-      updateHabit: (id: string, t: string) => setHabits(p => p.map(h => h.id === id ? {...h, title: t} : h))
+  const clearAll = useCallback(async () => {
+    await storage.clear();
+    setHabits([]);
+  }, []);
+
+  return { 
+    habits, 
+    toggleHabit, 
+    addHabit, 
+    isLoading, 
+    clearHabits: clearAll, 
+    deleteHabit, 
+    updateHabit 
   };
 }

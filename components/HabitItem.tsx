@@ -49,7 +49,7 @@ export const HabitItemComponent = ({ habit, onToggle, onDelete, onUpdate }: Habi
 
   const last7Days = getLast7Days();
   const todayStr = new Date().toISOString().split('T')[0];
-  const isDoneToday = habit.completedDates?.includes(todayStr);
+
   return (
     <View style={styles.card}>
       <View style={styles.mainRow}>
@@ -59,9 +59,8 @@ export const HabitItemComponent = ({ habit, onToggle, onDelete, onUpdate }: Habi
           style={styles.checkArea}
         >
           <Text style={styles.iconText}>
-            {isDoneToday ? "✅" : "⭕"}
+            {habit.completedToday ? "✅" : "⭕"}
           </Text>
-          
         </Pressable>
         </Animated.View>
 

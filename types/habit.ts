@@ -11,5 +11,4 @@ export interface Habit{
     streak?:number;
     lastCompleted?:string;
     completedDates: string[];
-    categoryId: string;
 }
